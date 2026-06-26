@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Elmed Balance — Calorie & FODMAP Scale</title>
+<style>
+  :root{
+    --gold:#D4A843; --ink:#243140; --bg:#f5f1e8; --card:#ffffff;
+    --green:#3fa66a; --amber:#e0a32e; --red:#d4503f; --line:#e3ddcd;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:linear-gradient(170deg,#faf7f0,#efe9da); color:var(--ink);
+    display:flex;flex-direction:column;align-items:center;min-height:100%;
+    padding:14px 12px 28px; overflow-x:hidden;
+  }
+  header{width:100%;max-width:560px;text-align:center;margin-bottom:6px}
+  .brand{font-size:12px;letter-spacing:2px;color:var(--gold);font-weight:700;text-transform:uppercase}
+  h1{font-size:21px;margin:2px 0 2px;font-weight:800}
+  .tagline{font-size:13px;color:#7a7363;margin-bottom:10px}
+
+  /* mode toggle */
+  .modes{display:inline-flex;background:#ece6d6;border-radius:999px;padding:4px;gap:4px;margin-bottom:6px}
+  .modes button{border:0;background:transparent;font-weight:700;font-size:14px;color:#8a8270;
+    padding:8px 18px;border-radius:999px;cursor:pointer;transition:.15s}
+  .modes button.on{background:var(--card);color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.08)}
+
+  .panel{width:100%;max-width:560px;background:var(--card);border:1px solid var(--line);
+    border-radius:18px;padding:16px 16px 18px;box-shadow:0 8px 24px rgba(60,50,20,.07);margin-top:8px}
+
+  .target{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+  .target select{font-size:15px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:#fff;font-weight:600}
+  .hint{font-size:13px;color:#7a7363;text-align:center;margin:2px 0 8px;min-height:18px}
+
+  /* ===== SCALE (calorie mode) ===== */
+  .scalewrap{position:relative;height:230px;margin:6px 0 2px}
+  .beam{position:absolute;top:42px;left:50%;width:430px;max-width:88vw;height:12px;
+    background:linear-gradient(var(--gold),#b98e2f);border-radius:6px;transform-origin:50% 50%;
+    transform:translateX(-50%) rotate(0deg);transition:transform .5s cubic-bezier(.34,1.3,.5,1);z-index:2}
+  .post{position:absolute;top:50px;left:50%;transform:translateX(-50%);width:14px;height:150px;
+    background:linear-gradient(#c9b27a,#a98f4f);border-radius:6px;z-index:1}
+  .fulcrum{position:absolute;top:196px;left:50%;transform:translateX(-50%);width:0;height:0;
+    border-left:36px solid transparent;border-right:36px solid transparent;border-bottom:40px solid #c9b27a;z-index:1}
+  .base{position:absolute;top:232px;left:50%;transform:translateX(-50%);width:160px;height:10px;background:#a98f4f;border-radius:5px}
+  .pan{position:absolute;top:0;width:140px;min-height:96px;transition:transform .5s cubic-bezier(.34,1.3,.5,1);z-index:3}
+  .pan .dish{background:#fffdf6;border:2px solid var(--gold);border-radius:0 0 70px 70px;border-top:none;
+    min-height:54px;padding:8px 6px 12px;display:flex;flex-wrap:wrap;gap:2px;justify-content:center;align-items:flex-end;
+    box-shadow:inset 0 -6px 10px rgba(212,168,67,.12)}
+  .pan .rope{height:24px;border-left:2px dashed #cdbb85;width:1px;margin:0 auto}
+  .pan .read{text-align:center;font-weight:800;font-size:15px;margin-top:4px}
+  .pan .read small{display:block;font-weight:600;font-size:11px;color:#8a8270}
+  .panL{left:calc(50% - 215px)} .panR{left:calc(50% + 75px)}
+  @media(max-width:520px){ .panL{left:4vw} .panR{left:auto;right:4vw} .beam{width:84vw} }
+  .food-emoji{font-size:20px;line-height:1}
+
+  /* ===== GUT METER (fodmap mode) ===== */
+  .gut{display:none;text-align:center;padding:6px 0 2px}
+  .belly{font-size:74px;line-height:1;transition:.3s;filter:drop-shadow(0 4px 6px rgba(0,0,0,.12))}
+  .meter{position:relative;height:26px;background:#eee7d6;border-radius:14px;margin:12px auto 4px;max-width:420px;overflow:hidden;border:1px solid var(--line)}
+  .fill{height:100%;width:0;background:linear-gradient(90deg,var(--green),var(--amber),var(--red));transition:width .4s}
+  .thresh{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--ink);border-radius:2px}
+  .thresh::after{content:"trigger threshold";position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--ink);white-space:nowrap;font-weight:700}
+  .meter-read{font-weight:800;font-size:15px}
+
+  /* food tray */
+  .tray{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px;margin-top:14px}
+  .food{background:#fff;border:1px solid var(--line);border-radius:14px;padding:9px 4px 7px;cursor:pointer;
+    text-align:center;transition:.12s;user-select:none}
+  .food:active{transform:scale(.93)}
+  .food .e{font-size:26px;line-height:1}
+  .food .n{font-size:11px;font-weight:700;margin-top:3px}
+  .food .v{font-size:10px;color:#8a8270;margin-top:1px}
+  .food .tag{display:inline-block;font-size:9px;font-weight:800;border-radius:6px;padding:1px 5px;margin-top:3px;color:#fff}
+  .tag.low{background:var(--green)} .tag.mod{background:var(--amber)} .tag.high{background:var(--red)}
+
+  .actions{display:flex;gap:8px;margin-top:14px;justify-content:center;flex-wrap:wrap}
+  .btn{border:0;border-radius:12px;padding:11px 18px;font-weight:800;font-size:14px;cursor:pointer}
+  .btn.primary{background:var(--ink);color:#fff} .btn.ghost{background:#ece6d6;color:var(--ink)}
+  .btn:active{transform:translateY(1px)}
+
+  /* reveal */
+  .reveal{margin-top:14px;border-radius:14px;padding:14px;display:none;animation:pop .4s}
+  .reveal.win{background:#eaf6ef;border:1px solid #bfe6cf} .reveal.over{background:#fbeae7;border:1px solid #f0c5bd}
+  .reveal h3{margin:0 0 6px;font-size:16px}
+  .reveal p{margin:4px 0;font-size:13.5px;line-height:1.5}
+  .big{font-size:22px;font-weight:800}
+  @keyframes pop{from{transform:scale(.95);opacity:0}to{transform:scale(1);opacity:1}}
+
+  footer{max-width:560px;font-size:11px;color:#9a9384;text-align:center;margin-top:16px;line-height:1.5}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Elmed Gastro</div>
+  <h1>The Balance Scale</h1>
+  <div class="tagline">How much real food equals one treat? Find out.</div>
+  <div class="modes">
+    <button id="mCal" class="on" onclick="setMode('cal')">⚖️ Calories</button>
+    <button id="mFod" onclick="setMode('fod')">🌱 FODMAP</button>
+  </div>
+</header>
+
+<div class="panel">
+  <!-- CALORIE MODE -->
+  <div id="calView">
+    <div class="target">
+      <span>Balance this:</span>
+      <select id="junkPick" onchange="pickJunk()"></select>
+    </div>
+    <div class="hint" id="calHint">Add whole foods until the scale balances.</div>
+    <div class="scalewrap">
+      <div class="post"></div>
+      <div class="beam" id="beam"></div>
+      <div class="pan panL" id="panL">
+        <div class="dish" id="dishL"></div><div class="rope"></div>
+        <div class="read" id="readL">0<small>the treat</small></div>
+      </div>
+      <div class="pan panR" id="panR">
+        <div class="dish" id="dishR"></div><div class="rope"></div>
+        <div class="read" id="readR">0 kcal<small>whole food</small></div>
+      </div>
+      <div class="fulcrum"></div><div class="base"></div>
+    </div>
+  </div>
+
+  <!-- FODMAP MODE -->
+  <div id="fodView" class="gut">
+    <div class="hint">Build a meal of at least 4 foods — keep the gut under its trigger threshold. High-FODMAP foods spike it fast.</div>
+    <div class="belly" id="belly">🙂</div>
+    <div class="meter"><div class="fill" id="fodFill"></div><div class="thresh" id="threshMark"></div></div>
+    <div class="meter-read"><span id="fodVal">0</span> / <span id="fodMax">50</span> FODMAP load &nbsp;·&nbsp; <span id="fodCount">0</span> foods</div>
+  </div>
+
+  <div class="tray" id="tray"></div>
+
+  <div class="actions">
+    <button class="btn primary" id="lockBtn" onclick="lockIn()">Lock it in</button>
+    <button class="btn ghost" onclick="resetRound()">Reset</button>
+  </div>
+
+  <div class="reveal" id="reveal"></div>
+</div>
+
+<footer>
+  Educational teaching aid by Elmed Gastro. Calorie and weight values are typical-portion approximations.
+  FODMAP ratings follow Monash University low-FODMAP principles and are simplified for teaching —
+  not a substitute for the Monash FODMAP app or a registered dietitian.
+</footer>
+
+<script>
+/* ---------- DATA ---------- */
+// kcal & g = per typical portion shown. fod = FODMAP load (0 none → 50 high). lvl = traffic light.
+const FOODS = [
+  {e:"🥬",n:"Spinach",kcal:7,g:30,fod:2,lvl:"low"},
+  {e:"🥒",n:"Cucumber",kcal:16,g:100,fod:2,lvl:"low"},
+  {e:"🥕",n:"Carrot",kcal:25,g:60,fod:1,lvl:"low"},
+  {e:"🍅",n:"Tomato",kcal:22,g:120,fod:3,lvl:"low"},
+  {e:"🍓",n:"Strawberry",kcal:50,g:150,fod:4,lvl:"low"},
+  {e:"🫐",n:"Blueberry",kcal:85,g:150,fod:5,lvl:"low"},
+  {e:"🍍",n:"Pineapple",kcal:82,g:165,fod:5,lvl:"low"},
+  {e:"🍇",n:"Grapes",kcal:104,g:150,fod:5,lvl:"low"},
+  {e:"🍊",n:"Orange",kcal:62,g:130,fod:4,lvl:"low"},
+  {e:"🥔",n:"Potato",kcal:160,g:170,fod:2,lvl:"low"},
+  {e:"🍚",n:"Rice",kcal:205,g:160,fod:1,lvl:"low"},
+  {e:"🥦",n:"Broccoli",kcal:30,g:90,fod:9,lvl:"mod"},
+  {e:"🍌",n:"Banana(ripe)",kcal:105,g:120,fod:13,lvl:"mod"},
+  {e:"🍉",n:"Watermelon",kcal:46,g:150,fod:35,lvl:"high"},
+  {e:"🍎",n:"Apple",kcal:95,g:180,fod:40,lvl:"high"},
+  {e:"🥭",n:"Mango",kcal:200,g:200,fod:38,lvl:"high"},
+  {e:"🧅",n:"Onion",kcal:40,g:110,fod:50,lvl:"high"},
+  {e:"🧄",n:"Garlic",kcal:5,g:9,fod:50,lvl:"high"},
+  {e:"🍞",n:"Wheat bread",kcal:80,g:30,fod:35,lvl:"high"},
+  {e:"🍯",n:"Honey",kcal:64,g:21,fod:40,lvl:"high"},
+];
+const JUNK = [
+  {e:"🍫",n:"Chocolate bar",kcal:250,g:45},
+  {e:"🥤",n:"Coke (500 ml)",kcal:210,g:520},
+  {e:"🍩",n:"Donut",kcal:260,g:70},
+  {e:"🍕",n:"Pizza slice",kcal:285,g:100},
+  {e:"🍟",n:"Large fries",kcal:510,g:150},
+  {e:"🍔",n:"Burger (Big Mac)",kcal:563,g:219},
+  {e:"🥤",n:"Milkshake",kcal:840,g:400},
+  {e:"🍔",n:"Burger + Fries + Coke",kcal:1283,g:889},
+  {e:"🍫",n:"M&M's Party Bag",kcal:5100,g:500},
+];
+const THRESHOLD = 50;
+
+/* ---------- STATE ---------- */
+let mode="cal", junk=JUNK[0], added=[], fodLoad=0, locked=false;
+
+/* ---------- INIT ---------- */
+const $=id=>document.getElementById(id);
+JUNK.forEach((j,i)=>{const o=document.createElement("option");o.value=i;o.textContent=`${j.e} ${j.n} — ${j.kcal} kcal`;$("junkPick").appendChild(o);});
+$("fodMax").textContent=THRESHOLD; $("threshMark").style.left="100%";
+buildTray();
+
+function buildTray(){
+  const t=$("tray");t.innerHTML="";
+  FOODS.forEach((f,i)=>{
+    const d=document.createElement("div");d.className="food";d.onclick=()=>addFood(i);
+    const val = mode==="cal" ? `${f.kcal} kcal` : `load ${f.fod}`;
+    const tag = mode==="fod" ? `<div class="tag ${f.lvl}">${f.lvl.toUpperCase()}</div>` : "";
+    d.innerHTML=`<div class="e">${f.e}</div><div class="n">${f.n}</div><div class="v">${val}</div>${tag}`;
+    t.appendChild(d);
+  });
+}
+
+/* ---------- MODE ---------- */
+function setMode(m){
+  mode=m;locked=false;
+  $("mCal").classList.toggle("on",m==="cal");$("mFod").classList.toggle("on",m==="fod");
+  $("calView").style.display = m==="cal"?"block":"none";
+  $("fodView").style.display = m==="fod"?"block":"none";
+  $("lockBtn").textContent = m==="cal"?"Lock it in":"Serve the meal";
+  resetRound();
+}
+
+/* ---------- CALORIE MODE ---------- */
+function pickJunk(){junk=JUNK[$("junkPick").value];resetRound();}
+function renderScale(){
+  const treat=junk.kcal, food=added.reduce((s,f)=>s+f.kcal,0);
+  $("readL").innerHTML=`${junk.e} ${treat}<small>kcal · ${junk.g} g</small>`;
+  $("readR").innerHTML=`${food} kcal<small>${added.length} foods · ${added.reduce((s,f)=>s+f.g,0)} g</small>`;
+  $("dishL").innerHTML=`<span class="food-emoji" style="font-size:30px">${junk.e}</span>`;
+  $("dishR").innerHTML=added.map(f=>`<span class="food-emoji">${f.e}</span>`).join("");
+  // beam tilt: left heavy → +deg (left dips). scale by difference.
+  const diff=treat-food, deg=Math.max(-15,Math.min(15, diff/Math.max(treat,150)*30));
+  $("beam").style.transform=`translateX(-50%) rotate(${deg}deg)`;
+  const lift=deg*2.4;
+  $("panL").style.transform=`translateY(${ -lift }px)`;
+  $("panR").style.transform=`translateY(${  lift }px)`;
+}
+
+/* ---------- FODMAP MODE ---------- */
+function renderGut(){
+  const pct=Math.min(100, fodLoad/THRESHOLD*100);
+  $("fodFill").style.width=pct+"%";
+  $("fodVal").textContent=fodLoad; $("fodCount").textContent=added.length;
+  const b=$("belly");
+  if(fodLoad>THRESHOLD){b.textContent="😣";b.style.transform="scale(1.05)";}
+  else if(fodLoad>THRESHOLD*0.7){b.textContent="😕";b.style.transform="scale(1)";}
+  else {b.textContent="🙂";b.style.transform="scale(1)";}
+}
+
+/* ---------- SHARED ---------- */
+function addFood(i){
+  if(locked) return;
+  const f=FOODS[i]; added.push(f);
+  if(mode==="cal") renderScale();
+  else { fodLoad+=f.fod; renderGut(); if(fodLoad>THRESHOLD) lockIn(); }
+}
+function resetRound(){
+  added=[];fodLoad=0;locked=false;$("reveal").style.display="none";
+  if(mode==="cal") renderScale(); else renderGut();
+  buildTray();
+}
+function lockIn(){
+  const r=$("reveal");
+  if(mode==="cal"){
+    const food=added.reduce((s,f)=>s+f.kcal,0), g=added.reduce((s,f)=>s+f.g,0);
+    if(added.length===0){return;}
+    const diff=Math.abs(junk.kcal-food), acc=Math.max(0,Math.round(100-diff/junk.kcal*100));
+    locked=true;
+    const balanced=diff<=junk.kcal*0.06;
+    r.className="reveal "+(balanced?"win":"over");
+    const ratio=(g/junk.g).toFixed(1);
+    r.innerHTML=`<h3>${balanced?"⚖️ Balanced!":"Close — "+acc+"% there"}</h3>
+      <p>It took <span class="big">${added.length}</span> portions of whole food —
+      <span class="big">${g} g</span> — to match <b>one ${junk.n}</b> (just ${junk.g} g).</p>
+      <p>That's <b>${ratio}× the weight</b> for the <i>same calories</i>. Whole food fills you up;
+      the treat slips ${junk.kcal} calories past you in a couple of bites. <b>That's calorie density.</b></p>`;
+    r.style.display="block";
+  } else {
+    locked=true;
+    const over=fodLoad>THRESHOLD;
+    r.className="reveal "+(over?"over":"win");
+    if(over){
+      r.innerHTML=`<h3>😣 Over the threshold — symptoms likely</h3>
+        <p>This meal hit a FODMAP load of <span class="big">${fodLoad}</span> (limit ${THRESHOLD}).
+        High-FODMAP foods like onion, garlic, apple and wheat stack up fast and trigger bloating, cramps and urgency in IBS.</p>
+        <p>Try swapping the red-tagged foods for green ones — you can eat <i>more</i> food, more comfortably.</p>`;
+    } else if(added.length<4){
+      r.className="reveal over";
+      r.innerHTML=`<h3>Add a bit more</h3><p>A satisfying meal is 4+ foods. You're at ${added.length} and only ${fodLoad} load — you've got room. Keep building.</p>`;
+      locked=false;
+    } else {
+      r.innerHTML=`<h3>🌱 Gut-friendly meal!</h3>
+        <p><span class="big">${added.length} foods</span> and still only <span class="big">${fodLoad}</span> FODMAP load — comfortably under ${THRESHOLD}.</p>
+        <p>Plenty of variety <i>and</i> a calm gut. This is the low-FODMAP sweet spot: it's not about eating less, it's about choosing the green-tag foods.</p>`;
+    }
+    r.style.display="block";
+  }
+}
+setMode("cal");
+</script>
+</body>
+</html>
