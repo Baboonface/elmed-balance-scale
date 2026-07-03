@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Elmed Scope Quest — Gastroscopy Simulator</title>
+<style>
+  :root{ --gold:#D4A843; --ink:#243140; --green:#3fa66a; --red:#d4503f; --line:#e3ddcd; --card:#fff; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+  html,body{margin:0;height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:linear-gradient(170deg,#faf7f0,#efe9da);color:var(--ink);
+    display:flex;flex-direction:column;align-items:center;min-height:100%;padding:12px 10px 24px;overflow-x:hidden}
+  header{width:100%;max-width:520px;text-align:center;margin-bottom:6px}
+  .brand{font-size:11px;letter-spacing:2px;color:var(--gold);font-weight:700;text-transform:uppercase}
+  h1{font-size:19px;margin:2px 0}
+  .tagline{font-size:12px;color:#7a7363}
+
+  .stage{width:100%;max-width:520px;background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:12px;box-shadow:0 8px 24px rgba(60,50,20,.08);margin-top:6px}
+
+  .hud{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;margin-bottom:8px;gap:8px}
+  .hud .station{color:var(--ink);background:#f3eede;border-radius:999px;padding:4px 10px}
+  .hud .score{color:var(--gold)}
+  .depthbar{height:8px;background:#eee7d6;border-radius:5px;overflow:hidden;margin-bottom:8px}
+  .depthfill{height:100%;width:0;background:linear-gradient(90deg,var(--gold),#b98e2f);transition:width .1s}
+
+  .scopewrap{position:relative;width:100%;aspect-ratio:1/1;max-width:360px;margin:0 auto;border-radius:14px;overflow:hidden;background:#1a0d0d}
+  canvas{display:block;width:100%;height:100%}
+  .overlay{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;align-items:center;
+    text-align:center;padding:18px;background:rgba(20,10,10,.82);color:#fff;backdrop-filter:blur(2px)}
+  .overlay.show{display:flex}
+  .overlay h3{margin:0 0 6px;font-size:16px}
+  .overlay p{margin:0 0 12px;font-size:13px;line-height:1.5;max-width:300px;color:#f3e8e0}
+  .qbtns{display:flex;flex-direction:column;gap:8px;width:100%;max-width:260px}
+  .qbtn{border:0;border-radius:10px;padding:11px;font-weight:700;font-size:14px;background:#fff;color:var(--ink);cursor:pointer}
+  .qbtn.good{background:var(--green);color:#fff} .qbtn.bad{background:var(--red);color:#fff}
+  .toast{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:12px;font-weight:700;color:#fff;
+    text-shadow:0 1px 3px #000;pointer-events:none;transition:.2s;opacity:0}
+  .toast.show{opacity:1}
+
+  /* controls */
+  .controls{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:10px}
+  .dpad{display:grid;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(3,42px);gap:4px}
+  .dpad button{border:0;background:#ece6d6;border-radius:10px;font-size:18px;font-weight:800;color:var(--ink);cursor:pointer}
+  .dpad button:active{background:var(--gold);color:#fff}
+  .dpad .up{grid-area:1/2} .dpad .left{grid-area:2/1} .dpad .right{grid-area:2/3} .dpad .down{grid-area:3/2}
+  .dpad .mid{grid-area:2/2;background:transparent;font-size:10px;color:#b3a988}
+  .rightpad{display:flex;flex-direction:column;gap:6px;flex:1;max-width:150px}
+  .abtn{border:0;border-radius:11px;padding:11px 8px;font-weight:800;font-size:13px;cursor:pointer;background:var(--ink);color:#fff}
+  .abtn.ghost{background:#ece6d6;color:var(--ink)} .abtn.act{background:var(--gold);color:#fff;display:none}
+  .abtn.act.show{display:block}
+  .abtn:active{transform:translateY(1px)}
+
+  .reveal{margin-top:12px;border-radius:12px;padding:14px;display:none;background:#eaf6ef;border:1px solid #bfe6cf}
+  .reveal h3{margin:0 0 6px} .reveal p{margin:4px 0;font-size:13px;line-height:1.5}
+  .btn{border:0;border-radius:11px;padding:10px 16px;font-weight:800;font-size:14px;cursor:pointer;background:var(--ink);color:#fff;margin-top:8px}
+  footer{max-width:520px;font-size:10.5px;color:#9a9384;text-align:center;margin-top:14px;line-height:1.5}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Elmed Gastro</div>
+  <h1>Scope Quest — Gastroscopy</h1>
+  <div class="tagline">Drive the scope. Keep the lumen centred. Complete a systematic exam.</div>
+</header>
+
+<div class="stage">
+  <div class="hud">
+    <span class="station" id="station">Oesophagus</span>
+    <span id="insertion">0 cm</span>
+    <span class="score" id="score">Score 0</span>
+  </div>
+  <div class="depthbar"><div class="depthfill" id="depthfill"></div></div>
+
+  <div class="scopewrap">
+    <canvas id="cv" width="360" height="360"></canvas>
+    <div class="toast" id="toast"></div>
+    <div class="overlay" id="overlay">
+      <h3 id="ovTitle"></h3>
+      <p id="ovText"></p>
+      <div class="qbtns" id="ovBtns"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="dpad">
+      <button class="up" data-dir="up">▲</button>
+      <button class="left" data-dir="left">◀</button>
+      <button class="mid">steer</button>
+      <button class="right" data-dir="right">▶</button>
+      <button class="down" data-dir="down">▼</button>
+    </div>
+    <div class="rightpad">
+      <button class="abtn" id="advBtn">⤓ Advance</button>
+      <button class="abtn ghost" id="wdrBtn">⤒ Withdraw</button>
+      <button class="abtn ghost" id="rfxBtn">↺ Retroflex</button>
+      <button class="abtn act" id="actBtn">🔬 Act</button>
+    </div>
+  </div>
+
+  <div class="reveal" id="reveal"></div>
+</div>
+
+<footer>
+  Educational teaching simulator by Elmed Gastro. The mucosa is stylised computer graphics — <b>no patient images</b>.
+  Anatomy and landmarks are simplified for teaching and are not a substitute for supervised endoscopy training.
+</footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$("cv"), ctx=cv.getContext("2d");
+const DPR=Math.min(2,window.devicePixelRatio||1);
+cv.width=360*DPR; cv.height=360*DPR; ctx.scale(DPR,DPR);
+const W=360,H=360,CX=180,CY=180;
+
+/* ---------- STATE ---------- */
+let depth=0;            // 0..100 insertion progress
+const DMAX=100;
+let tipX=0,tipY=0;      // scope tip deflection (px)
+let retro=false;        // retroflexion
+let contacts=0, score=0, paused=false, finished=false;
+let t=0;                // anim time
+
+/* ---------- LANDMARKS (depth-ordered) ---------- */
+// type quiz: identify. type action: do something (retroflex / biopsy). done flag set when passed.
+const MARKS=[
+  {d:24,type:"quiz",done:false,title:"Landmark",
+   text:"You've reached the salmon-pink line where the tube meets the stomach. Name it.",
+   opts:["Z-line (gastro-oesophageal junction)","Pylorus","Incisura angularis"],ans:0,pts:15,
+   teach:"The Z-line is the squamo-columnar junction. Note it at ~40 cm from the incisors — the reference point for Barrett's oesophagus."},
+  {d:40,type:"action",done:false,act:"retro",title:"Inspect the fundus",
+   text:"You're in the stomach body. The fundus & cardia sit behind you. Press ↺ Retroflex to turn the tip and inspect them.",pts:15,
+   teach:"Retroflexion (a J-manoeuvre) lets you see the cardia and fundus — blind spots on the forward view. Essential for a complete exam."},
+  {d:52,type:"action",done:false,act:"biopsy",title:"Abnormal mucosa",
+   text:"At the incisura you see a punched-out lesion with a clean white base and rolled edge — a gastric ulcer. Take a biopsy (🔬)?",pts:20,
+   teach:"Any gastric ulcer needs biopsy — to exclude malignancy and test for H. pylori — plus a follow-up scope to confirm healing.",
+   optOut:"Leave it"},
+  {d:70,type:"quiz",done:false,title:"Landmark",
+   text:"The folds converge into a tight muscular ring that opens and closes rhythmically. Name it.",
+   opts:["Pylorus","Cardia","Duodenal papilla"],ans:0,pts:15,
+   teach:"The pylorus is the gateway to the duodenum. Centre it and advance gently through as it opens."},
+  {d:90,type:"quiz",done:false,title:"Landmark",
+   text:"Through the pylorus, in the second part of the duodenum, you spot a small nipple-like projection medially. Name it.",
+   opts:["Ampulla of Vater (major papilla)","Z-line","Incisura"],ans:0,pts:15,
+   teach:"The major papilla (ampulla of Vater) is where bile and pancreatic ducts drain — the target for ERCP cannulation."},
+];
+
+/* ---------- PATH: where the lumen sits vs scope axis ---------- */
+function lumenOffset(dep){
+  // the passage snakes; player steers tip to follow it
+  return { x: 62*Math.sin(dep*0.075) + 26*Math.sin(dep*0.031),
+           y: 46*Math.sin(dep*0.11+1.3) + 20*Math.cos(dep*0.05) };
+}
+function phaseOf(dep){
+  if(dep<25) return "Oesophagus";
+  if(dep<48) return retro?"Stomach — retroflexed":"Stomach body";
+  if(dep<66) return "Incisura / Antrum";
+  if(dep<74) return "Pylorus";
+  return "Duodenum";
+}
+
+/* ---------- RENDER ---------- */
+function draw(){
+  t+=1;
+  const off=lumenOffset(depth);
+  // lumen screen position = passage offset minus how far we've deflected the tip
+  let lx=CX+(off.x - tipX), ly=CY+(off.y - tipY);
+  if(retro){ lx=CX-(off.x - tipX); ly=CY-(off.y - tipY); }
+  const dist=Math.hypot(lx-CX,ly-CY);
+  const phase=phaseOf(depth);
+
+  // mucosa base
+  const baseCol = depth<22 ? ["#f0b7a8","#c76b58"] :
+                  depth<66 ? ["#f2b0a0","#b8503f"] :
+                             ["#f5c3a0","#c07048"];
+  let g=ctx.createRadialGradient(lx,ly,10,CX,CY,240);
+  g.addColorStop(0,"#2a0d0a"); g.addColorStop(.12,"#5c1f16");
+  g.addColorStop(.4,baseCol[1]); g.addColorStop(1,baseCol[0]);
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+  // folds — concentric wavy rings around the lumen (rugae in stomach, smoother in oesophagus)
+  const folds = depth<22?5 : depth<66?8 : 6;
+  const amp = depth<22?3 : depth<66?11 : 7;
+  for(let r=1;r<=folds;r++){
+    const rad=26*r+ (t*0.3%14);
+    ctx.beginPath();
+    for(let a=0;a<=Math.PI*2+0.1;a+=0.25){
+      const wob=amp*Math.sin(a*(depth<66?6:4)+r+t*0.02);
+      const x=lx+Math.cos(a)*(rad+wob), y=ly+Math.sin(a)*(rad+wob);
+      a===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle="rgba(90,25,18,"+(0.30-r*0.02)+")"; ctx.lineWidth=3; ctx.stroke();
+  }
+  // dark lumen ahead
+  let lg=ctx.createRadialGradient(lx,ly,2,lx,ly,42);
+  lg.addColorStop(0,"#000"); lg.addColorStop(.7,"#1c0705"); lg.addColorStop(1,"rgba(40,10,8,0)");
+  ctx.fillStyle=lg; ctx.beginPath(); ctx.arc(lx,ly,42,0,7); ctx.fill();
+
+  // Z-line at GE junction
+  if(depth>=20 && depth<=26){
+    ctx.beginPath();
+    for(let a=0;a<=Math.PI*2+.1;a+=.3){ const x=lx+Math.cos(a)*(58+6*Math.sin(a*7)), y=ly+Math.sin(a)*(58+6*Math.sin(a*7)); a===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+    ctx.strokeStyle="#e88"; ctx.lineWidth=4; ctx.stroke();
+  }
+  // lesion (gastric ulcer) near incisura
+  if(depth>=47 && depth<=57 && !MARKS[2].done){
+    const ux=lx+70, uy=ly-40;
+    ctx.fillStyle="#c33"; ctx.beginPath(); ctx.arc(ux,uy,17,0,7); ctx.fill();      // red rolled edge
+    ctx.fillStyle="#f4ecdf"; ctx.beginPath(); ctx.arc(ux,uy,10,0,7); ctx.fill();   // white base
+  }
+  // pylorus ring
+  if(depth>=66 && depth<74){
+    ctx.strokeStyle="rgba(60,15,10,.6)"; ctx.lineWidth=10;
+    const pr=30+4*Math.sin(t*0.08);
+    ctx.beginPath(); ctx.arc(lx,ly,pr,0,7); ctx.stroke();
+  }
+  // duodenal papilla
+  if(depth>=86 && !MARKS[4].done){
+    ctx.fillStyle="#d98"; ctx.beginPath(); ctx.ellipse(lx-46,ly+20,10,14,0.5,0,7); ctx.fill();
+  }
+
+  // specular highlight (wet mucosa)
+  ctx.fillStyle="rgba(255,255,255,.14)"; ctx.beginPath(); ctx.ellipse(CX-70,CY-70,26,14,-0.6,0,7); ctx.fill();
+
+  // reticle (scope axis)
+  ctx.strokeStyle="rgba(255,255,255,.5)"; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(CX-10,CY); ctx.lineTo(CX+10,CY); ctx.moveTo(CX,CY-10); ctx.lineTo(CX,CY+10); ctx.stroke();
+  ctx.strokeStyle = dist<34?"rgba(80,220,140,.8)":"rgba(255,255,255,.25)";
+  ctx.beginPath(); ctx.arc(CX,CY,34,0,7); ctx.stroke();
+
+  // contact redout
+  if(contactFlash>0){ ctx.fillStyle="rgba(200,30,20,"+(contactFlash/30*0.5)+")"; ctx.fillRect(0,0,W,H); contactFlash--; }
+
+  // HUD text
+  $("station").textContent=phase;
+  $("insertion").textContent=Math.round(20+depth*0.7)+" cm";
+  $("depthfill").style.width=depth+"%";
+  // context action button
+  const m=MARKS[2];
+  if(depth>=47 && depth<=57 && !m.done){ $("actBtn").classList.add("show"); $("actBtn").textContent="🔬 Biopsy"; }
+  else if(!paused){ $("actBtn").classList.remove("show"); }
+
+  requestAnimationFrame(draw);
+
+  // landmark trigger (after draw so visuals are in place)
+  if(!paused && !finished){
+    for(const mk of MARKS){ if(!mk.done && depth>=mk.d){ triggerMark(mk); break; } }
+    if(depth>=DMAX && !finished) finish();
+  }
+}
+let contactFlash=0;
+
+/* ---------- LANDMARKS ---------- */
+let activeMark=null;
+function triggerMark(mk){
+  if(mk.type==="action" && mk.act==="retro"){
+    // don't hard-pause; prompt, complete when they retroflex
+    if(!mk.prompted){ mk.prompted=true; toast("↺ Retroflex to inspect the fundus"); }
+    if(retro){ mk.done=true; score+=mk.pts; paintScore(); showTeach(mk); }
+    return;
+  }
+  if(mk.type==="action" && mk.act==="biopsy"){
+    // handled by the 🔬 button; just stop auto-advancing past it un-biopsied is optional
+    return;
+  }
+  // quiz → pause with overlay
+  paused=true; activeMark=mk;
+  const ov=$("overlay"); $("ovTitle").textContent=mk.title; $("ovText").textContent=mk.text;
+  const box=$("ovBtns"); box.innerHTML="";
+  mk.opts.forEach((o,i)=>{ const b=document.createElement("button"); b.className="qbtn"; b.textContent=o;
+    b.onclick=()=>answer(mk,i,b); box.appendChild(b); });
+  ov.classList.add("show");
+}
+function answer(mk,i,btn){
+  if(i===mk.ans){ btn.classList.add("good"); score+=mk.pts; paintScore(); mk.done=true;
+    setTimeout(()=>{ $("overlay").classList.remove("show"); showTeach(mk); },350); }
+  else { btn.classList.add("bad"); score=Math.max(0,score-5); paintScore();
+    setTimeout(()=>btn.classList.remove("bad"),500); }
+}
+function showTeach(mk){
+  paused=true;
+  const ov=$("overlay"); $("ovTitle").textContent="✓ "+mk.title.replace("Landmark","Correct"); $("ovText").textContent=mk.teach;
+  const box=$("ovBtns"); box.innerHTML="";
+  const b=document.createElement("button"); b.className="qbtn good"; b.textContent="Continue ▸";
+  b.onclick=()=>{ ov.classList.remove("show"); paused=false; };
+  box.appendChild(b); ov.classList.add("show");
+}
+function doBiopsy(){
+  const mk=MARKS[2];
+  if(depth>=47 && depth<=57 && !mk.done){ mk.done=true; score+=mk.pts; paintScore();
+    $("actBtn").classList.remove("show"); toast("Biopsy taken ✓"); showTeach(mk); }
+}
+
+/* ---------- INPUT ---------- */
+function paintScore(){ $("score").textContent="Score "+score; }
+function toast(msg){ const el=$("toast"); el.textContent=msg; el.classList.add("show"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"),1400); }
+function steer(dir){
+  if(paused) return;
+  const s=9;
+  if(dir==="up") tipY-=s; if(dir==="down") tipY+=s; if(dir==="left") tipX-=s; if(dir==="right") tipX+=s;
+  tipX=Math.max(-140,Math.min(140,tipX)); tipY=Math.max(-140,Math.min(140,tipY));
+}
+function advance(){
+  if(paused||finished) return;
+  const off=lumenOffset(depth);
+  let lx=CX+(off.x-tipX), ly=CY+(off.y-tipY); if(retro){lx=CX-(off.x-tipX);ly=CY-(off.y-tipY);}
+  const dist=Math.hypot(lx-CX,ly-CY);
+  if(dist<34){ depth=Math.min(DMAX,depth+1.4); }
+  else { contactFlash=30; contacts++; toast("Mucosal contact — re-centre the lumen"); if(navigator.vibrate)navigator.vibrate(30); }
+}
+function withdraw(){ if(paused)return; depth=Math.max(0,depth-1.6); }
+function toggleRetro(){ if(paused)return; if(depth>=24 && depth<64){ retro=!retro; toast(retro?"Retroflexed ↺":"Forward view"); } else toast("Retroflex only in the stomach"); }
+
+// press-and-hold helpers
+function hold(btn,fn){
+  let iv=null;
+  const start=e=>{ e.preventDefault(); fn(); iv=setInterval(fn,90); };
+  const stop=()=>{ clearInterval(iv); iv=null; };
+  btn.addEventListener("pointerdown",start); btn.addEventListener("pointerup",stop);
+  btn.addEventListener("pointerleave",stop); btn.addEventListener("pointercancel",stop);
+}
+document.querySelectorAll(".dpad button[data-dir]").forEach(b=>hold(b,()=>steer(b.dataset.dir)));
+hold($("advBtn"),advance); hold($("wdrBtn"),withdraw);
+$("rfxBtn").onclick=toggleRetro; $("actBtn").onclick=doBiopsy;
+
+/* ---------- FINISH ---------- */
+function finish(){
+  finished=true; paused=true;
+  const done=MARKS.filter(m=>m.done).length;
+  const complete = done===MARKS.length;
+  score += Math.max(0, 20 - contacts*3);   // gentleness bonus
+  paintScore();
+  const r=$("reveal"); r.style.display="block";
+  r.innerHTML=`<h3>${complete?"🏆 Complete systematic exam!":"Scope withdrawn"}</h3>
+    <p>Landmarks identified: <b>${done}/${MARKS.length}</b> · Mucosal contacts: <b>${contacts}</b> · Final score: <b>${score}</b>.</p>
+    <p>A good gastroscopy is <i>systematic</i>: intubate under direct vision, follow the lumen, view the Z-line, retroflex for the fundus, inspect the incisura & antrum, intubate the pylorus, and reach D2 — biopsying anything abnormal on the way. ${complete?"You hit every station.":"Aim to catch every station next run."}</p>
+    <button class="btn" onclick="restart()">Scope again</button>`;
+}
+function restart(){
+  depth=0;tipX=0;tipY=0;retro=false;contacts=0;score=0;paused=false;finished=false;
+  MARKS.forEach(m=>{m.done=false;m.prompted=false;});
+  $("reveal").style.display="none"; $("overlay").classList.remove("show"); $("actBtn").classList.remove("show");
+  paintScore();
+}
+
+/* ---------- BOOT ---------- */
+toast("Follow the dark lumen — steer, then Advance");
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
