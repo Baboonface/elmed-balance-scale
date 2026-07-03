@@ -148,15 +148,25 @@ const MARKS=[
 
 /* ---------- PATH: where the lumen sits vs scope axis ---------- */
 function lumenOffset(dep){
-  // the passage snakes; player steers tip to follow it
-  return { x: 62*Math.sin(dep*0.075) + 26*Math.sin(dep*0.031),
-           y: 46*Math.sin(dep*0.11+1.3) + 20*Math.cos(dep*0.05) };
+  // the passage snakes; player steers tip to follow it. The oesophagus is nearly
+  // straight; the stomach curves hard (the J / greater curve); pylorus re-centres.
+  const curve = dep<25?0.35 : dep<58?1.5 : dep<70?1.1 : dep<78?0.5 : 0.9;
+  return { x: (62*Math.sin(dep*0.075) + 26*Math.sin(dep*0.031))*curve,
+           y: (46*Math.sin(dep*0.11+1.3) + 20*Math.cos(dep*0.05))*curve };
+}
+// caliber of the lumen by segment: narrow tube → wide cavity → pinhole → medium tube
+function calib(dep){
+  if(dep<25)  return {lumenR:32, folds:5, gap:24, amp:3,  tol:34, kind:"tube"};      // oesophagus
+  if(dep<58)  return {lumenR:72, folds:6, gap:36, amp:15, tol:44, kind:"cavity"};    // stomach body/fundus — opens wide
+  if(dep<70)  return {lumenR:44, folds:7, gap:24, amp:11, tol:34, kind:"antrum"};    // antrum — folds converge
+  if(dep<78)  return {lumenR:14, folds:3, gap:20, amp:4,  tol:21, kind:"pylorus"};   // pylorus — tight ring
+  return                {lumenR:40, folds:6, gap:24, amp:5,  tol:31, kind:"duodenum"};  // duodenum — slightly wider tube, circular folds
 }
 function phaseOf(dep){
   if(dep<25) return "Oesophagus";
-  if(dep<48) return retro?"Stomach — retroflexed":"Stomach body";
-  if(dep<66) return "Incisura / Antrum";
-  if(dep<74) return "Pylorus";
+  if(dep<58) return retro?"Stomach — retroflexed":"Stomach body";
+  if(dep<70) return "Incisura / Antrum";
+  if(dep<78) return "Pylorus";
   return "Duodenum";
 }
 
@@ -179,23 +189,34 @@ function draw(){
   g.addColorStop(.4,baseCol[1]); g.addColorStop(1,baseCol[0]);
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
 
-  // folds — concentric wavy rings around the lumen (rugae in stomach, smoother in oesophagus)
-  const folds = depth<22?5 : depth<66?8 : 6;
-  const amp = depth<22?3 : depth<66?11 : 7;
-  for(let r=1;r<=folds;r++){
-    const rad=26*r+ (t*0.3%14);
+  const C=calib(depth);
+  // open cavity: a darker recessed far-wall gives the stomach its "widening" depth
+  if(C.kind==="cavity"||C.kind==="antrum"){
+    ctx.fillStyle="rgba(45,14,10,.30)"; ctx.beginPath(); ctx.arc(lx,ly,C.lumenR+38,0,7); ctx.fill();
+  }
+  // folds — rugae (lobed) in stomach, smooth circular valvulae in duodenum, tight in oesophagus
+  const lobes = C.kind==="duodenum"?0 : (C.kind==="tube"?6:5);
+  for(let r=1;r<=C.folds;r++){
+    const rad=C.lumenR + C.gap*r + (t*0.3%14);
     ctx.beginPath();
-    for(let a=0;a<=Math.PI*2+0.1;a+=0.25){
-      const wob=amp*Math.sin(a*(depth<66?6:4)+r+t*0.02);
+    for(let a=0;a<=Math.PI*2+0.1;a+=0.22){
+      const wob=lobes? C.amp*Math.sin(a*lobes+r+t*0.02) : 0;
       const x=lx+Math.cos(a)*(rad+wob), y=ly+Math.sin(a)*(rad+wob);
       a===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
     }
-    ctx.strokeStyle="rgba(90,25,18,"+(0.30-r*0.02)+")"; ctx.lineWidth=3; ctx.stroke();
+    ctx.closePath();
+    ctx.strokeStyle="rgba(90,25,18,"+(0.34-r*0.03)+")"; ctx.lineWidth=C.kind==="duodenum"?2:3; ctx.stroke();
   }
-  // dark lumen ahead
-  let lg=ctx.createRadialGradient(lx,ly,2,lx,ly,42);
+  // dark lumen ahead (small in oesophagus, huge in stomach, pinhole at pylorus)
+  let lg=ctx.createRadialGradient(lx,ly,2,lx,ly,C.lumenR);
   lg.addColorStop(0,"#000"); lg.addColorStop(.7,"#1c0705"); lg.addColorStop(1,"rgba(40,10,8,0)");
-  ctx.fillStyle=lg; ctx.beginPath(); ctx.arc(lx,ly,42,0,7); ctx.fill();
+  ctx.fillStyle=lg; ctx.beginPath(); ctx.arc(lx,ly,C.lumenR,0,7); ctx.fill();
+  // pylorus: pale muscular ring around the pinhole
+  if(C.kind==="pylorus"){
+    ctx.strokeStyle="rgba(232,184,164,.8)"; ctx.lineWidth=22;
+    const pr=C.lumenR+16+3*Math.sin(t*0.08);
+    ctx.beginPath(); ctx.arc(lx,ly,pr,0,7); ctx.stroke();
+  }
 
   // Z-line at GE junction
   if(depth>=20 && depth<=26){
@@ -209,12 +230,6 @@ function draw(){
     ctx.fillStyle="#c33"; ctx.beginPath(); ctx.arc(ux,uy,17,0,7); ctx.fill();      // red rolled edge
     ctx.fillStyle="#f4ecdf"; ctx.beginPath(); ctx.arc(ux,uy,10,0,7); ctx.fill();   // white base
   }
-  // pylorus ring
-  if(depth>=66 && depth<74){
-    ctx.strokeStyle="rgba(60,15,10,.6)"; ctx.lineWidth=10;
-    const pr=30+4*Math.sin(t*0.08);
-    ctx.beginPath(); ctx.arc(lx,ly,pr,0,7); ctx.stroke();
-  }
   // duodenal papilla
   if(depth>=86 && !MARKS[4].done){
     ctx.fillStyle="#d98"; ctx.beginPath(); ctx.ellipse(lx-46,ly+20,10,14,0.5,0,7); ctx.fill();
@@ -226,8 +241,8 @@ function draw(){
   // reticle (scope axis)
   ctx.strokeStyle="rgba(255,255,255,.5)"; ctx.lineWidth=1.5;
   ctx.beginPath(); ctx.moveTo(CX-10,CY); ctx.lineTo(CX+10,CY); ctx.moveTo(CX,CY-10); ctx.lineTo(CX,CY+10); ctx.stroke();
-  ctx.strokeStyle = dist<34?"rgba(80,220,140,.8)":"rgba(255,255,255,.25)";
-  ctx.beginPath(); ctx.arc(CX,CY,34,0,7); ctx.stroke();
+  ctx.strokeStyle = dist<C.tol?"rgba(80,220,140,.8)":"rgba(255,255,255,.25)";
+  ctx.beginPath(); ctx.arc(CX,CY,C.tol,0,7); ctx.stroke();
 
   // contact redout
   if(contactFlash>0){ ctx.fillStyle="rgba(200,30,20,"+(contactFlash/30*0.5)+")"; ctx.fillRect(0,0,W,H); contactFlash--; }
@@ -306,7 +321,7 @@ function advance(){
   const off=lumenOffset(depth);
   let lx=CX+(off.x-tipX), ly=CY+(off.y-tipY); if(retro){lx=CX-(off.x-tipX);ly=CY-(off.y-tipY);}
   const dist=Math.hypot(lx-CX,ly-CY);
-  if(dist<34){ depth=Math.min(DMAX,depth+1.4); }
+  if(dist<calib(depth).tol){ depth=Math.min(DMAX,depth+1.4); }
   else { contactFlash=30; contacts++; toast("Mucosal contact — re-centre the lumen"); if(navigator.vibrate)navigator.vibrate(30); }
 }
 function withdraw(){ if(paused)return; depth=Math.max(0,depth-1.6); }
