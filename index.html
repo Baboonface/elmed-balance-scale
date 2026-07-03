@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Elmed Balance — Calorie & FODMAP Scale</title>
+<title>Elmed Gut Health Games</title>
 <style>
   :root{
     --gold:#D4A843; --ink:#243140; --bg:#f5f1e8; --card:#ffffff;
-    --green:#3fa66a; --amber:#e0a32e; --red:#d4503f; --line:#e3ddcd;
+    --green:#3fa66a; --amber:#e0a32e; --red:#d4503f; --line:#e3ddcd; --blue:#3f7ea6;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%}
@@ -21,15 +21,27 @@
   .brand{font-size:12px;letter-spacing:2px;color:var(--gold);font-weight:700;text-transform:uppercase}
   h1{font-size:21px;margin:2px 0 2px;font-weight:800}
   .tagline{font-size:13px;color:#7a7363;margin-bottom:10px}
-
-  /* mode toggle */
-  .modes{display:inline-flex;background:#ece6d6;border-radius:999px;padding:4px;gap:4px;margin-bottom:6px}
-  .modes button{border:0;background:transparent;font-weight:700;font-size:14px;color:#8a8270;
-    padding:8px 18px;border-radius:999px;cursor:pointer;transition:.15s}
-  .modes button.on{background:var(--card);color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.08)}
+  .backbar{width:100%;max-width:560px;display:none;margin-bottom:2px}
+  .backbar button{border:0;background:#ece6d6;color:var(--ink);font-weight:700;font-size:13px;
+    padding:8px 14px;border-radius:999px;cursor:pointer}
 
   .panel{width:100%;max-width:560px;background:var(--card);border:1px solid var(--line);
     border-radius:18px;padding:16px 16px 18px;box-shadow:0 8px 24px rgba(60,50,20,.07);margin-top:8px}
+
+  /* ===== HOME / GAME PICKER ===== */
+  .menu{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:560px;margin-top:8px}
+  @media(max-width:440px){ .menu{grid-template-columns:1fr} }
+  .gcard{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 14px;
+    cursor:pointer;text-align:left;transition:.14s;box-shadow:0 6px 18px rgba(60,50,20,.06)}
+  .gcard:active{transform:scale(.97)}
+  .gcard .ico{font-size:34px;line-height:1}
+  .gcard h3{margin:8px 0 3px;font-size:16px}
+  .gcard p{margin:0;font-size:12px;color:#7a7363;line-height:1.45}
+  .gcard .best{margin-top:8px;font-size:11px;font-weight:800;color:var(--gold);min-height:14px}
+
+  .scorebar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;font-size:13px;font-weight:700}
+  .scorebar .pill{background:#f3eede;border-radius:999px;padding:5px 12px}
+  .scorebar .streak{color:var(--gold)}
 
   .target{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
   .target select{font-size:15px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:#fff;font-weight:600}
@@ -55,31 +67,38 @@
   .panL{left:calc(50% - 215px)} .panR{left:calc(50% + 75px)}
   @media(max-width:520px){ .panL{left:4vw} .panR{left:auto;right:4vw} .beam{width:84vw} }
   .food-emoji{font-size:20px;line-height:1}
+  .gap-read{text-align:center;font-size:13px;font-weight:700;color:var(--blue);min-height:18px;margin-top:2px}
 
-  /* ===== GUT METER (fodmap mode) ===== */
-  .gut{display:none;text-align:center;padding:6px 0 2px}
+  /* ===== METER (fodmap / fibre) ===== */
+  .metric{display:none;text-align:center;padding:6px 0 2px}
+  .metric.show{display:block}
   .belly{font-size:74px;line-height:1;transition:.3s;filter:drop-shadow(0 4px 6px rgba(0,0,0,.12))}
   .meter{position:relative;height:26px;background:#eee7d6;border-radius:14px;margin:12px auto 4px;max-width:420px;overflow:hidden;border:1px solid var(--line)}
-  .fill{height:100%;width:0;background:linear-gradient(90deg,var(--green),var(--amber),var(--red));transition:width .4s}
+  .fill{height:100%;width:0;transition:width .4s}
+  .fill.fod{background:linear-gradient(90deg,var(--green),var(--amber),var(--red))}
+  .fill.fib{background:linear-gradient(90deg,#cdbb85,var(--green))}
   .thresh{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--ink);border-radius:2px}
-  .thresh::after{content:"trigger threshold";position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--ink);white-space:nowrap;font-weight:700}
+  .thresh::after{content:attr(data-label);position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--ink);white-space:nowrap;font-weight:700}
   .meter-read{font-weight:800;font-size:15px}
 
   /* food tray */
   .tray{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px;margin-top:14px}
   .food{background:#fff;border:1px solid var(--line);border-radius:14px;padding:9px 4px 7px;cursor:pointer;
-    text-align:center;transition:.12s;user-select:none}
+    text-align:center;transition:.12s;user-select:none;position:relative}
   .food:active{transform:scale(.93)}
   .food .e{font-size:26px;line-height:1}
   .food .n{font-size:11px;font-weight:700;margin-top:3px}
   .food .v{font-size:10px;color:#8a8270;margin-top:1px}
   .food .tag{display:inline-block;font-size:9px;font-weight:800;border-radius:6px;padding:1px 5px;margin-top:3px;color:#fff}
   .tag.low{background:var(--green)} .tag.mod{background:var(--amber)} .tag.high{background:var(--red)}
+  .food.flash-ok{animation:okflash .5s} .food.flash-no{animation:noflash .5s}
+  @keyframes okflash{0%{background:#eaf6ef}100%{background:#fff}}
+  @keyframes noflash{0%,60%{background:#fbeae7;transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}100%{background:#fff}}
 
   .actions{display:flex;gap:8px;margin-top:14px;justify-content:center;flex-wrap:wrap}
   .btn{border:0;border-radius:12px;padding:11px 18px;font-weight:800;font-size:14px;cursor:pointer}
   .btn.primary{background:var(--ink);color:#fff} .btn.ghost{background:#ece6d6;color:var(--ink)}
-  .btn:active{transform:translateY(1px)}
+  .btn:active{transform:translateY(1px)} .btn[disabled]{opacity:.4}
 
   /* reveal */
   .reveal{margin-top:14px;border-radius:14px;padding:14px;display:none;animation:pop .4s}
@@ -95,48 +114,84 @@
 <body>
 <header>
   <div class="brand">Elmed Gastro</div>
-  <h1>The Balance Scale</h1>
-  <div class="tagline">How much real food equals one treat? Find out.</div>
-  <div class="modes">
-    <button id="mCal" class="on" onclick="setMode('cal')">⚖️ Calories</button>
-    <button id="mFod" onclick="setMode('fod')">🌱 FODMAP</button>
-  </div>
+  <h1 id="title">Gut Health Games</h1>
+  <div class="tagline" id="tagline">Four quick games about food, digestion and your gut.</div>
 </header>
 
-<div class="panel">
+<div class="backbar" id="backbar"><button onclick="goHome()">← All games</button></div>
+
+<!-- HOME -->
+<div class="menu" id="home">
+  <div class="gcard" onclick="openGame('cal')">
+    <div class="ico">⚖️</div><h3>The Balance Scale</h3>
+    <p>How much real food equals one treat? Balance the scale and meet calorie density.</p>
+    <div class="best" id="best-cal"></div>
+  </div>
+  <div class="gcard" onclick="openGame('fod')">
+    <div class="ico">🌱</div><h3>FODMAP Builder</h3>
+    <p>Build a filling meal that keeps your gut calm. Learn what triggers IBS.</p>
+    <div class="best" id="best-fod"></div>
+  </div>
+  <div class="gcard" onclick="openGame('fib')">
+    <div class="ico">🎯</div><h3>Fibre Target</h3>
+    <p>Reach 30 g of fibre a day — the goal that protects your colon and keeps you regular.</p>
+    <div class="best" id="best-fib"></div>
+  </div>
+  <div class="gcard" onclick="openGame('prep')">
+    <div class="ico">🫧</div><h3>Prep Hero</h3>
+    <p>Colonoscopy tomorrow? Tap only what's allowed the day before. Nail your bowel prep.</p>
+    <div class="best" id="best-prep"></div>
+  </div>
+</div>
+
+<!-- GAME PANEL -->
+<div class="panel" id="panel" style="display:none">
+  <div class="scorebar">
+    <span class="pill" id="roundPill">Round 1</span>
+    <span class="pill streak" id="streakPill">🔥 0</span>
+    <span class="pill" id="scorePill">Score 0</span>
+  </div>
+
   <!-- CALORIE MODE -->
-  <div id="calView">
-    <div class="target">
-      <span>Balance this:</span>
-      <select id="junkPick" onchange="pickJunk()"></select>
-    </div>
+  <div id="calView" style="display:none">
+    <div class="target"><span>Balance this:</span><select id="junkPick" onchange="pickJunk()"></select></div>
     <div class="hint" id="calHint">Add whole foods until the scale balances.</div>
     <div class="scalewrap">
-      <div class="post"></div>
-      <div class="beam" id="beam"></div>
-      <div class="pan panL" id="panL">
-        <div class="dish" id="dishL"></div><div class="rope"></div>
-        <div class="read" id="readL">0<small>the treat</small></div>
-      </div>
-      <div class="pan panR" id="panR">
-        <div class="dish" id="dishR"></div><div class="rope"></div>
-        <div class="read" id="readR">0 kcal<small>whole food</small></div>
-      </div>
+      <div class="post"></div><div class="beam" id="beam"></div>
+      <div class="pan panL" id="panL"><div class="dish" id="dishL"></div><div class="rope"></div><div class="read" id="readL">0<small>the treat</small></div></div>
+      <div class="pan panR" id="panR"><div class="dish" id="dishR"></div><div class="rope"></div><div class="read" id="readR">0 kcal<small>whole food</small></div></div>
       <div class="fulcrum"></div><div class="base"></div>
     </div>
+    <div class="gap-read" id="gapRead"></div>
   </div>
 
   <!-- FODMAP MODE -->
-  <div id="fodView" class="gut">
+  <div id="fodView" class="metric">
     <div class="hint">Build a meal of at least 4 foods — keep the gut under its trigger threshold. High-FODMAP foods spike it fast.</div>
     <div class="belly" id="belly">🙂</div>
-    <div class="meter"><div class="fill" id="fodFill"></div><div class="thresh" id="threshMark"></div></div>
+    <div class="meter"><div class="fill fod" id="fodFill"></div><div class="thresh" id="threshMark" data-label="trigger threshold"></div></div>
     <div class="meter-read"><span id="fodVal">0</span> / <span id="fodMax">50</span> FODMAP load &nbsp;·&nbsp; <span id="fodCount">0</span> foods</div>
+  </div>
+
+  <!-- FIBRE MODE -->
+  <div id="fibView" class="metric">
+    <div class="hint">Build a day of eating that reaches the <b>30 g fibre</b> goal. Fibre-rich foods get you there fastest.</div>
+    <div class="belly" id="fibFace">🌾</div>
+    <div class="meter"><div class="fill fib" id="fibFill"></div><div class="thresh" id="fibThresh" data-label="30 g goal"></div></div>
+    <div class="meter-read"><span id="fibVal">0</span> / 30 g fibre &nbsp;·&nbsp; <span id="fibKcal">0</span> kcal &nbsp;·&nbsp; <span id="fibCount">0</span> foods</div>
+  </div>
+
+  <!-- PREP MODE -->
+  <div id="prepView" class="metric">
+    <div class="hint">It's the day before your colonoscopy. <b>Tap only the foods & drinks that are allowed</b> on clear-fluid prep. Leave the rest. Get all right to pass.</div>
+    <div class="belly" id="prepFace">🫧</div>
+    <div class="meter-read"><span id="prepFound">0</span> / <span id="prepTotal">0</span> allowed found &nbsp;·&nbsp; <span id="prepErr">0</span> mistakes</div>
   </div>
 
   <div class="tray" id="tray"></div>
 
   <div class="actions">
+    <button class="btn ghost" id="undoBtn" onclick="undo()">↩︎ Undo</button>
     <button class="btn primary" id="lockBtn" onclick="lockIn()">Lock it in</button>
     <button class="btn ghost" onclick="resetRound()">Reset</button>
   </div>
@@ -145,41 +200,47 @@
 </div>
 
 <footer>
-  Educational teaching aid by Elmed Gastro. Calorie and weight values are typical-portion approximations.
-  FODMAP ratings follow Monash University low-FODMAP principles and are simplified for teaching —
-  not a substitute for the Monash FODMAP app or a registered dietitian.
+  Educational teaching aids by Elmed Gastro. Calorie, weight and fibre values are typical-portion approximations.
+  FODMAP ratings follow Monash University low-FODMAP principles, simplified for teaching. Bowel-prep guidance is
+  general — <b>always follow the specific prep instructions Dr Mahlasela's rooms give you</b>. Not a substitute for
+  a registered dietitian or your doctor's advice.
 </footer>
 
 <script>
-/* ---------- DATA ---------- */
-// kcal & g = per typical portion shown. fod = FODMAP load (0 none → 50 high). lvl = traffic light.
+/* ================= DATA ================= */
 const FOODS = [
-  {e:"🥬",n:"Spinach",kcal:7,g:30,fod:2,lvl:"low"},
-  {e:"🥒",n:"Cucumber",kcal:16,g:100,fod:2,lvl:"low"},
-  {e:"🥕",n:"Carrot",kcal:25,g:60,fod:1,lvl:"low"},
-  {e:"🍅",n:"Tomato",kcal:22,g:120,fod:3,lvl:"low"},
-  {e:"🍓",n:"Strawberry",kcal:50,g:150,fod:4,lvl:"low"},
-  {e:"🫐",n:"Blueberry",kcal:85,g:150,fod:5,lvl:"low"},
-  {e:"🍍",n:"Pineapple",kcal:82,g:165,fod:5,lvl:"low"},
-  {e:"🍇",n:"Grapes",kcal:104,g:150,fod:5,lvl:"low"},
-  {e:"🍊",n:"Orange",kcal:62,g:130,fod:4,lvl:"low"},
-  {e:"🥔",n:"Potato",kcal:160,g:170,fod:2,lvl:"low"},
-  {e:"🍚",n:"Rice",kcal:205,g:160,fod:1,lvl:"low"},
-  {e:"🐟",n:"Salmon",kcal:200,g:100,fod:0,lvl:"low"},
-  {e:"🥩",n:"Steak",kcal:280,g:150,fod:0,lvl:"low"},
-  {e:"🍗",n:"Chicken",kcal:200,g:120,fod:0,lvl:"low"},
-  {e:"🍖",n:"Pork ribs",kcal:400,g:160,fod:5,lvl:"low"},
-  {e:"🥚",n:"Eggs (2)",kcal:140,g:100,fod:0,lvl:"low"},
-  {e:"🍤",n:"Prawns",kcal:85,g:100,fod:1,lvl:"low"},
-  {e:"🥦",n:"Broccoli",kcal:30,g:90,fod:9,lvl:"mod"},
-  {e:"🍌",n:"Banana(ripe)",kcal:105,g:120,fod:13,lvl:"mod"},
-  {e:"🍉",n:"Watermelon",kcal:46,g:150,fod:35,lvl:"high"},
-  {e:"🍎",n:"Apple",kcal:95,g:180,fod:40,lvl:"high"},
-  {e:"🥭",n:"Mango",kcal:200,g:200,fod:38,lvl:"high"},
-  {e:"🧅",n:"Onion",kcal:40,g:110,fod:50,lvl:"high"},
-  {e:"🧄",n:"Garlic",kcal:5,g:9,fod:50,lvl:"high"},
-  {e:"🍞",n:"Wheat bread",kcal:80,g:30,fod:35,lvl:"high"},
-  {e:"🍯",n:"Honey",kcal:64,g:21,fod:40,lvl:"high"},
+  {e:"🥬",n:"Spinach",kcal:7,g:30,fod:2,lvl:"low",fib:2.2},
+  {e:"🥒",n:"Cucumber",kcal:16,g:100,fod:2,lvl:"low",fib:0.5},
+  {e:"🥕",n:"Carrot",kcal:25,g:60,fod:1,lvl:"low",fib:1.7},
+  {e:"🍅",n:"Tomato",kcal:22,g:120,fod:3,lvl:"low",fib:1.5},
+  {e:"🍓",n:"Strawberry",kcal:50,g:150,fod:4,lvl:"low",fib:3.0},
+  {e:"🫐",n:"Blueberry",kcal:85,g:150,fod:5,lvl:"low",fib:3.6},
+  {e:"🍍",n:"Pineapple",kcal:82,g:165,fod:5,lvl:"low",fib:2.3},
+  {e:"🍇",n:"Grapes",kcal:104,g:150,fod:5,lvl:"low",fib:1.4},
+  {e:"🍊",n:"Orange",kcal:62,g:130,fod:4,lvl:"low",fib:3.1},
+  {e:"🥔",n:"Potato",kcal:160,g:170,fod:2,lvl:"low",fib:2.2},
+  {e:"🍚",n:"Rice",kcal:205,g:160,fod:1,lvl:"low",fib:0.6},
+  {e:"🐟",n:"Salmon",kcal:200,g:100,fod:0,lvl:"low",fib:0},
+  {e:"🥩",n:"Steak",kcal:280,g:150,fod:0,lvl:"low",fib:0},
+  {e:"🍗",n:"Chicken",kcal:200,g:120,fod:0,lvl:"low",fib:0},
+  {e:"🍖",n:"Pork ribs",kcal:400,g:160,fod:5,lvl:"low",fib:0},
+  {e:"🥚",n:"Eggs (2)",kcal:140,g:100,fod:0,lvl:"low",fib:0},
+  {e:"🍤",n:"Prawns",kcal:85,g:100,fod:1,lvl:"low",fib:0},
+  {e:"🥦",n:"Broccoli",kcal:30,g:90,fod:9,lvl:"mod",fib:2.4},
+  {e:"🫘",n:"Beans",kcal:130,g:130,fod:22,lvl:"high",fib:7.5},
+  {e:"🥑",n:"Avocado",kcal:160,g:100,fod:12,lvl:"mod",fib:6.7},
+  {e:"🌾",n:"Oats",kcal:150,g:40,fod:6,lvl:"low",fib:4.0},
+  {e:"🍿",n:"Popcorn",kcal:90,g:24,fod:4,lvl:"low",fib:3.6},
+  {e:"🍐",n:"Pear",kcal:100,g:180,fod:30,lvl:"high",fib:5.5},
+  {e:"🌰",n:"Nuts",kcal:180,g:28,fod:8,lvl:"mod",fib:2.9},
+  {e:"🍌",n:"Banana(ripe)",kcal:105,g:120,fod:13,lvl:"mod",fib:3.1},
+  {e:"🍉",n:"Watermelon",kcal:46,g:150,fod:35,lvl:"high",fib:0.6},
+  {e:"🍎",n:"Apple",kcal:95,g:180,fod:40,lvl:"high",fib:4.4},
+  {e:"🥭",n:"Mango",kcal:200,g:200,fod:38,lvl:"high",fib:3.0},
+  {e:"🧅",n:"Onion",kcal:40,g:110,fod:50,lvl:"high",fib:1.7},
+  {e:"🧄",n:"Garlic",kcal:5,g:9,fod:50,lvl:"high",fib:0.2},
+  {e:"🍞",n:"Wheat bread",kcal:80,g:30,fod:35,lvl:"high",fib:1.9},
+  {e:"🍯",n:"Honey",kcal:64,g:21,fod:40,lvl:"high",fib:0},
 ];
 const JUNK = [
   {e:"🍫",n:"Chocolate bar",kcal:250,g:45},
@@ -193,38 +254,95 @@ const JUNK = [
   {e:"🍫",n:"M&M's Party Bag",kcal:5100,g:500},
 ];
 const THRESHOLD = 50;
+// Prep items: allowed = clear fluids / permitted; blocked = solids, dairy, red/purple, high residue
+const PREP = [
+  {e:"💧",n:"Water",ok:true},
+  {e:"🍏",n:"Apple juice",ok:true,why:"clear & pale — fine"},
+  {e:"🫖",n:"Black tea",ok:true,why:"no milk = clear"},
+  {e:"☕",n:"Black coffee",ok:true,why:"no milk = clear"},
+  {e:"🍮",n:"Plain jelly",ok:true,why:"clear jelly, not red"},
+  {e:"🥣",n:"Clear broth",ok:true,why:"strained, no bits"},
+  {e:"🍋",n:"Lemonade",ok:true,why:"clear fizzy — fine"},
+  {e:"🧊",n:"Ice lollies",ok:true,why:"clear, not red/purple"},
+  {e:"🥛",n:"Milk",ok:false,why:"dairy is not a clear fluid"},
+  {e:"🧃",n:"Orange juice(bits)",ok:false,why:"pulp = residue"},
+  {e:"🍅",n:"Tomato soup",ok:false,why:"not clear, has solids"},
+  {e:"🍎",n:"Whole apple",ok:false,why:"solid food — none today"},
+  {e:"🍞",n:"Bread",ok:false,why:"solid, high residue"},
+  {e:"🥩",n:"Steak",ok:false,why:"solid food — none today"},
+  {e:"🍇",n:"Grape juice",ok:false,why:"red/purple stains the bowel"},
+  {e:"🍓",n:"Red jelly",ok:false,why:"red dye mimics blood on scope"},
+  {e:"🥗",n:"Salad",ok:false,why:"fibre & seeds — avoid"},
+  {e:"🌰",n:"Nuts/seeds",ok:false,why:"seeds cling to the wall"},
+];
 
-/* ---------- STATE ---------- */
-let mode="cal", junk=JUNK[0], added=[], fodLoad=0, locked=false;
-
-/* ---------- INIT ---------- */
+/* ================= STATE ================= */
 const $=id=>document.getElementById(id);
-JUNK.forEach((j,i)=>{const o=document.createElement("option");o.value=i;o.textContent=`${j.e} ${j.n} — ${j.kcal} kcal`;$("junkPick").appendChild(o);});
-$("fodMax").textContent=THRESHOLD; $("threshMark").style.left="100%";
-buildTray();
+let mode="cal", junk=JUNK[0], added=[], fodLoad=0, fibG=0, fibKcal=0, locked=false;
+let round=1, streak=0, score=0, prepPicked=[], prepErr=0;
+const store = { get:k=>{try{return JSON.parse(localStorage.getItem("elmedGames")||"{}")[k]||0}catch(e){return 0}},
+  set:(k,v)=>{try{const o=JSON.parse(localStorage.getItem("elmedGames")||"{}");if(v>(o[k]||0)){o[k]=v;localStorage.setItem("elmedGames",JSON.stringify(o))}}catch(e){}} };
 
+function buzz(ms){ if(navigator.vibrate) navigator.vibrate(ms); }
+
+/* ================= NAV ================= */
+const META = {
+  cal:{title:"The Balance Scale",tag:"How much real food equals one treat?"},
+  fod:{title:"FODMAP Builder",tag:"Build a filling meal that keeps your gut calm."},
+  fib:{title:"Fibre Target",tag:"Reach the 30 g fibre goal that protects your colon."},
+  prep:{title:"Prep Hero",tag:"Tap only what's allowed the day before your scope."},
+};
+function paintBest(){
+  $("best-cal").textContent = store.get("cal")? "Best streak 🔥 "+store.get("cal"):"";
+  $("best-fod").textContent = store.get("fod")? "Best streak 🔥 "+store.get("fod"):"";
+  $("best-fib").textContent = store.get("fib")? "Best score "+store.get("fib"):"";
+  $("best-prep").textContent = store.get("prep")? "Best score "+store.get("prep"):"";
+}
+function goHome(){
+  $("home").style.display="grid"; $("panel").style.display="none"; $("backbar").style.display="none";
+  $("title").textContent="Gut Health Games"; $("tagline").textContent="Four quick games about food, digestion and your gut.";
+  paintBest();
+}
+function openGame(m){
+  mode=m; round=1; streak=0; score=0;
+  $("home").style.display="none"; $("panel").style.display="block"; $("backbar").style.display="block";
+  $("title").textContent=META[m].title; $("tagline").textContent=META[m].tag;
+  ["calView","fodView","fibView","prepView"].forEach(v=>{ $(v).style.display="none"; });
+  if(m==="cal"){ $("calView").style.display="block"; $("lockBtn").textContent="Lock it in"; }
+  if(m==="fod"){ $("fodView").style.display="block"; $("lockBtn").textContent="Serve the meal"; }
+  if(m==="fib"){ $("fibView").style.display="block"; $("lockBtn").textContent="Finish the day"; }
+  if(m==="prep"){ $("prepView").style.display="block"; $("lockBtn").textContent="Submit"; }
+  $("undoBtn").style.display = m==="prep" ? "none" : "inline-block";
+  resetRound();
+}
+
+/* ================= TRAY ================= */
 function buildTray(){
-  const t=$("tray");t.innerHTML="";
+  const t=$("tray"); t.innerHTML="";
+  if(mode==="prep"){
+    PREP.forEach((f,i)=>{
+      const d=document.createElement("div"); d.className="food"; d.id="cell"+i; d.onclick=()=>tapPrep(i);
+      d.innerHTML=`<div class="e">${f.e}</div><div class="n">${f.n}</div>`;
+      t.appendChild(d);
+    });
+    return;
+  }
   FOODS.forEach((f,i)=>{
-    const d=document.createElement("div");d.className="food";d.onclick=()=>addFood(i);
-    const val = mode==="cal" ? `${f.kcal} kcal` : `load ${f.fod}`;
-    const tag = mode==="fod" ? `<div class="tag ${f.lvl}">${f.lvl.toUpperCase()}</div>` : "";
+    const d=document.createElement("div"); d.className="food"; d.id="cell"+i; d.onclick=()=>addFood(i);
+    let val,tag="";
+    if(mode==="cal"){ val=`${f.kcal} kcal`; }
+    else if(mode==="fod"){ val=`load ${f.fod}`; tag=`<div class="tag ${f.lvl}">${f.lvl.toUpperCase()}</div>`; }
+    else { val=`${f.fib} g fibre`; }
     d.innerHTML=`<div class="e">${f.e}</div><div class="n">${f.n}</div><div class="v">${val}</div>${tag}`;
     t.appendChild(d);
   });
 }
 
-/* ---------- MODE ---------- */
-function setMode(m){
-  mode=m;locked=false;
-  $("mCal").classList.toggle("on",m==="cal");$("mFod").classList.toggle("on",m==="fod");
-  $("calView").style.display = m==="cal"?"block":"none";
-  $("fodView").style.display = m==="fod"?"block":"none";
-  $("lockBtn").textContent = m==="cal"?"Lock it in":"Serve the meal";
-  resetRound();
-}
+/* ================= SCORE HUD ================= */
+function paintHud(){ $("roundPill").textContent="Round "+round; $("streakPill").textContent="🔥 "+streak; $("scorePill").textContent="Score "+score; }
 
-/* ---------- CALORIE MODE ---------- */
+/* ================= CALORIE ================= */
+JUNK.forEach((j,i)=>{const o=document.createElement("option");o.value=i;o.textContent=`${j.e} ${j.n} — ${j.kcal} kcal`;$("junkPick").appendChild(o);});
 function pickJunk(){junk=JUNK[$("junkPick").value];resetRound();}
 function renderScale(){
   const treat=junk.kcal, food=added.reduce((s,f)=>s+f.kcal,0);
@@ -232,75 +350,143 @@ function renderScale(){
   $("readR").innerHTML=`${food} kcal<small>${added.length} foods · ${added.reduce((s,f)=>s+f.g,0)} g</small>`;
   $("dishL").innerHTML=`<span class="food-emoji" style="font-size:30px">${junk.e}</span>`;
   $("dishR").innerHTML=added.map(f=>`<span class="food-emoji">${f.e}</span>`).join("");
-  // beam tilt: left heavy → +deg (left dips). scale by difference.
   const diff=treat-food, deg=Math.max(-15,Math.min(15, diff/Math.max(treat,150)*30));
   $("beam").style.transform=`translateX(-50%) rotate(${deg}deg)`;
-  const lift=deg*2.4;
-  $("panL").style.transform=`translateY(${ -lift }px)`;
-  $("panR").style.transform=`translateY(${  lift }px)`;
+  const lift=deg*2.4; $("panL").style.transform=`translateY(${-lift}px)`; $("panR").style.transform=`translateY(${lift}px)`;
+  const gap=treat-food;
+  $("gapRead").textContent = added.length? (Math.abs(gap)<=treat*0.06 ? "Balanced — lock it in!" : gap>0? `${gap} kcal to go` : `${-gap} kcal over`) : "";
 }
 
-/* ---------- FODMAP MODE ---------- */
+/* ================= FODMAP ================= */
 function renderGut(){
-  const pct=Math.min(100, fodLoad/THRESHOLD*100);
-  $("fodFill").style.width=pct+"%";
+  const pct=Math.min(100, fodLoad/THRESHOLD*100); $("fodFill").style.width=pct+"%";
   $("fodVal").textContent=fodLoad; $("fodCount").textContent=added.length;
   const b=$("belly");
-  if(fodLoad>THRESHOLD){b.textContent="😣";b.style.transform="scale(1.05)";}
-  else if(fodLoad>THRESHOLD*0.7){b.textContent="😕";b.style.transform="scale(1)";}
-  else {b.textContent="🙂";b.style.transform="scale(1)";}
+  if(fodLoad>THRESHOLD){b.textContent="😣";} else if(fodLoad>THRESHOLD*0.7){b.textContent="😕";} else {b.textContent="🙂";}
 }
 
-/* ---------- SHARED ---------- */
+/* ================= FIBRE ================= */
+function renderFib(){
+  const pct=Math.min(100, fibG/30*100); $("fibFill").style.width=pct+"%";
+  $("fibVal").textContent=fibG.toFixed(1); $("fibKcal").textContent=fibKcal; $("fibCount").textContent=added.length;
+  $("fibThresh").style.left="100%";
+  $("fibFace").textContent = fibG>=30 ? "😄" : fibG>=20 ? "🙂" : "🌾";
+}
+
+/* ================= PREP ================= */
+function tapPrep(i){
+  if(locked) return;
+  const cell=$("cell"+i); if(prepPicked.includes(i)) return;
+  prepPicked.push(i);
+  if(PREP[i].ok){ cell.classList.add("flash-ok"); cell.style.borderColor="var(--green)"; buzz(20); }
+  else { cell.classList.add("flash-no"); cell.style.borderColor="var(--red)"; prepErr++; buzz([40,40,40]); }
+  const found=prepPicked.filter(x=>PREP[x].ok).length;
+  $("prepFound").textContent=found; $("prepErr").textContent=prepErr;
+  $("prepFace").textContent = prepErr>0 ? "😬" : "🫧";
+}
+
+/* ================= SHARED ACTIONS ================= */
 function addFood(i){
   if(locked) return;
   const f=FOODS[i]; added.push(f);
+  const cell=$("cell"+i); cell.classList.remove("flash-ok"); void cell.offsetWidth; cell.classList.add("flash-ok"); buzz(15);
   if(mode==="cal") renderScale();
-  else { fodLoad+=f.fod; renderGut(); if(fodLoad>THRESHOLD) lockIn(); }
+  else if(mode==="fod"){ fodLoad+=f.fod; renderGut(); if(fodLoad>THRESHOLD) lockIn(); }
+  else if(mode==="fib"){ fibG+=f.fib; fibKcal+=f.kcal; renderFib(); }
+}
+function undo(){
+  if(locked||!added.length) return;
+  const f=added.pop();
+  if(mode==="cal") renderScale();
+  else if(mode==="fod"){ fodLoad-=f.fod; renderGut(); }
+  else if(mode==="fib"){ fibG-=f.fib; fibKcal-=f.kcal; renderFib(); }
 }
 function resetRound(){
-  added=[];fodLoad=0;locked=false;$("reveal").style.display="none";
-  if(mode==="cal") renderScale(); else renderGut();
-  buildTray();
+  added=[];fodLoad=0;fibG=0;fibKcal=0;locked=false;prepPicked=[];prepErr=0;
+  $("reveal").style.display="none";
+  if(mode==="cal") renderScale(); else if(mode==="fod") renderGut(); else if(mode==="fib") renderFib();
+  else { $("prepFound").textContent=0; $("prepErr").textContent=0; $("prepTotal").textContent=PREP.filter(p=>p.ok).length; $("prepFace").textContent="🫧"; }
+  buildTray(); paintHud();
 }
+function nextRound(won){
+  if(won){ streak++; score+=10+streak*2; } else { streak=0; }
+  const key=mode; store.set(key, key==="cal"||key==="fod"? streak : score);
+  round++; paintHud();
+}
+
+/* ================= LOCK / SCORE ================= */
 function lockIn(){
   const r=$("reveal");
   if(mode==="cal"){
+    if(added.length===0) return;
     const food=added.reduce((s,f)=>s+f.kcal,0), g=added.reduce((s,f)=>s+f.g,0);
-    if(added.length===0){return;}
     const diff=Math.abs(junk.kcal-food), acc=Math.max(0,Math.round(100-diff/junk.kcal*100));
-    locked=true;
-    const balanced=diff<=junk.kcal*0.06;
+    locked=true; const balanced=diff<=junk.kcal*0.06; const ratio=(g/junk.g).toFixed(1);
     r.className="reveal "+(balanced?"win":"over");
-    const ratio=(g/junk.g).toFixed(1);
-    r.innerHTML=`<h3>${balanced?"⚖️ Balanced!":"Close — "+acc+"% there"}</h3>
+    r.innerHTML=`<h3>${balanced?"⚖️ Balanced! +"+(10+ (streak+1)*2)+" pts":"Close — "+acc+"% there"}</h3>
       <p>It took <span class="big">${added.length}</span> portions of whole food —
       <span class="big">${g} g</span> — to match <b>one ${junk.n}</b> (just ${junk.g} g).</p>
       <p>That's <b>${ratio}× the weight</b> for the <i>same calories</i>. Whole food fills you up;
-      the treat slips ${junk.kcal} calories past you in a couple of bites. <b>That's calorie density.</b></p>`;
+      the treat slips ${junk.kcal} calories past you in a couple of bites. <b>That's calorie density.</b></p>
+      ${balanced?'<p><b>Next round →</b> pick a new treat above.</p>':''}`;
     r.style.display="block";
-  } else {
-    locked=true;
-    const over=fodLoad>THRESHOLD;
+    if(balanced){ buzz([30,40,30]); nextRound(true); } else nextRound(false);
+  }
+  else if(mode==="fod"){
+    locked=true; const over=fodLoad>THRESHOLD;
+    if(!over && added.length<4){ r.className="reveal over";
+      r.innerHTML=`<h3>Add a bit more</h3><p>A satisfying meal is 4+ foods. You're at ${added.length} and only ${fodLoad} load — you've got room. Keep building.</p>`;
+      locked=false; r.style.display="block"; return; }
     r.className="reveal "+(over?"over":"win");
-    if(over){
+    if(over){ buzz([40,40,40]);
       r.innerHTML=`<h3>😣 Over the threshold — symptoms likely</h3>
         <p>This meal hit a FODMAP load of <span class="big">${fodLoad}</span> (limit ${THRESHOLD}).
-        High-FODMAP foods like onion, garlic, apple and wheat stack up fast and trigger bloating, cramps and urgency in IBS.</p>
-        <p>Try swapping the red-tagged foods for green ones — you can eat <i>more</i> food, more comfortably.</p>`;
-    } else if(added.length<4){
-      r.className="reveal over";
-      r.innerHTML=`<h3>Add a bit more</h3><p>A satisfying meal is 4+ foods. You're at ${added.length} and only ${fodLoad} load — you've got room. Keep building.</p>`;
-      locked=false;
-    } else {
-      r.innerHTML=`<h3>🌱 Gut-friendly meal!</h3>
+        Onion, garlic, apple and wheat stack up fast and trigger bloating, cramps and urgency in IBS.</p>
+        <p>Swap the red-tagged foods for green ones — you can eat <i>more</i> food, more comfortably.</p>`;
+      nextRound(false);
+    } else { buzz([30,40,30]);
+      r.innerHTML=`<h3>🌱 Gut-friendly meal! +${10+(streak+1)*2} pts</h3>
         <p><span class="big">${added.length} foods</span> and still only <span class="big">${fodLoad}</span> FODMAP load — comfortably under ${THRESHOLD}.</p>
-        <p>Plenty of variety <i>and</i> a calm gut. This is the low-FODMAP sweet spot: it's not about eating less, it's about choosing the green-tag foods.</p>`;
+        <p>Variety <i>and</i> a calm gut. Low-FODMAP isn't about eating less — it's choosing the green-tag foods.</p>`;
+      nextRound(true);
     }
     r.style.display="block";
   }
+  else if(mode==="fib"){
+    if(added.length===0) return; locked=true;
+    const hit=fibG>=30; r.className="reveal "+(hit?"win":"over");
+    if(hit){ buzz([30,40,30]);
+      r.innerHTML=`<h3>🎯 30 g reached! +${10+(streak+1)*2} pts</h3>
+        <p>You hit <span class="big">${fibG.toFixed(1)} g</span> fibre in <b>${added.length} foods</b> (${fibKcal} kcal).</p>
+        <p>30 g a day <b>protects your colon</b> (lowers bowel-cancer & diverticular risk), keeps you regular, and feeds the good gut bacteria. Most people get barely half. Beans, oats, avocado, pear and popcorn did the heavy lifting.</p>`;
+      nextRound(true);
+    } else {
+      r.innerHTML=`<h3>Not quite — ${fibG.toFixed(1)} g of 30 g</h3>
+        <p>You're <b>${(30-fibG).toFixed(1)} g short</b>. Meat, rice and cucumber add almost none. Reach for the fibre heavyweights: 🫘 beans, 🥑 avocado, 🌾 oats, 🍐 pear, 🍿 popcorn.</p>`;
+      nextRound(false);
+    }
+    r.style.display="block";
+  }
+  else if(mode==="prep"){
+    locked=true;
+    const allowed=PREP.filter(p=>p.ok).length;
+    const found=prepPicked.filter(i=>PREP[i].ok).length;
+    const missed=allowed-found; const perfect=(found===allowed && prepErr===0);
+    // reveal correct answers on the grid
+    PREP.forEach((p,i)=>{ const c=$("cell"+i); c.style.borderColor = p.ok?"var(--green)":"var(--line)"; c.style.opacity=p.ok?"1":".45"; });
+    const pts = Math.max(0, found*10 - prepErr*8 - missed*5);
+    score += pts; store.set("prep", score); paintHud();
+    r.className="reveal "+(perfect?"win":"over");
+    r.innerHTML=`<h3>${perfect?"🫧 Perfect prep! +"+pts+" pts":"Prep review — +"+pts+" pts"}</h3>
+      <p>You found <b>${found}/${allowed}</b> allowed items with <b>${prepErr}</b> mistake${prepErr===1?"":"s"}.</p>
+      <p><b>The rule:</b> the day before a colonoscopy you go on <b>clear fluids only</b> — things you can see through: water, clear juices (apple), clear broth, black tea/coffee, clear jelly & lollies. <b>Avoid</b> solids, dairy, and anything <b>red or purple</b> (it looks like blood on the scope). A clean bowel means a complete, accurate scope — and no repeat.</p>
+      <p style="font-size:12px;color:#7a7363"><b>Always follow the exact prep sheet the rooms give you</b> — timings and the prep drink matter too.</p>`;
+    r.style.display="block";
+  }
 }
-setMode("cal");
+
+/* ================= BOOT ================= */
+paintBest(); goHome();
 </script>
 </body>
 </html>
